@@ -168,7 +168,7 @@ void loop() {
           while(millis() - response_wait_timer < 2000){
             if(TTL_Serial.available()){
               String receivedResponse_for_HTTP_request = Serial.readStringUntil('\n');
-              
+              receivedResponse_for_HTTP_request.trim();
               if (receivedResponse_for_HTTP_request.startsWith(appScriptURL)) {
                 responseData_String = receivedResponse_for_HTTP_request.substring(appScriptURL.length());
                 responseData_String.trim(); 
