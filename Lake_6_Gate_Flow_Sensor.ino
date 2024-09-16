@@ -64,7 +64,7 @@ String column_names[numof_Parameter] = {"_device_id", "_device_name", "_gate_sta
 String Server_Sensor_values[numof_Parameter];           // Float array to store paramters value
 
 int sensor_height_offset_mm;  // The distance between the sensor head and the base of the canal in 'mm'
-const uint8_t modbusCommand[] = /*{0xFB, 0x05, 0x05, 0xDC, 0xE1};*/ {0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0x85, 0xF6}/*{0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0xD5, 0xCA}*/; // Modbus command for ulltrasonic Sensor
+const uint8_t modbusCommand[] = /*{0xFB, 0x05, 0x05, 0xDC, 0xE1};*/ {0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0x85, 0xF6}/*{0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0xD5, 0xCA}*/; // Modbus command for ulltrasonic Sensor
 const int buttonPin = 0;
 
 bool status_led_state = false; 
@@ -157,7 +157,7 @@ void loop() {
 
           sensor_value = parse_sensor_value(encoded_string, "Total Height", "mm", 1, 1);
           //Serial.printf("Sensor value: %f \n", sensor_value);
-          sensor_value /= sample_count;
+          // sensor_value /= sample_count;
           flow_height = sensor_value;
 
           send_to_serial(String(flow_height));
