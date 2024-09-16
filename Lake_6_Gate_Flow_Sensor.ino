@@ -41,10 +41,10 @@ const uint8_t server_error_counter_limit = 8;           // Threashold at which t
 void send_to_modbus();
 
 /*.Modbus settings....................................*/
-HardwareSerial modbus(2);
+HardwareSerial modbus(1);
 
-const int modbus_RX = 3;     //3                        // Custom SCL Pin for ADXL sensor
-const int modbus_TX = 8;     //2                        // Custom SDA Pin for ADXL sensor
+const int modbus_RX = 17;     //3                        // TX pin of RS485-TTL converter
+const int modbus_TX = 18;     //2                        // RX pin of RS485-TTL converter
 
 const int TTL_RX = 4;
 const int TTL_TX = 5;
@@ -64,7 +64,7 @@ String column_names[numof_Parameter] = {"_device_id", "_device_name", "_gate_sta
 String Server_Sensor_values[numof_Parameter];           // Float array to store paramters value
 
 int sensor_height_offset_mm;  // The distance between the sensor head and the base of the canal in 'mm'
-const uint8_t modbusCommand[] = {0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0x85, 0xF6}; // Modbus command for ulltrasonic Sensor
+const uint8_t modbusCommand[] = /*{0xFB, 0x05, 0x05, 0xDC, 0xE1};*/ {0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0x85, 0xF6}/*{0x01, 0x03, 0x01, 0x00, 0x00, 0x01, 0xD5, 0xCA}*/; // Modbus command for ulltrasonic Sensor
 const int buttonPin = 0;
 
 bool status_led_state = false; 
@@ -347,36 +347,37 @@ float parse_sensor_value(String recv_data, String name, String unit, uint8_t dat
       } else if (data_format == ABCD){
           // Already in ABCD format, no need to change anything
       } else {
-        // Serial.println("[Warning] Error Data Format");
+        Serial.println("[Warning] Error Data Format");
         return 0.0;
       }
     String byteString = recv_data.substring(0, data_size_bytes*2);
     unsigned long hexValue = strtoul(byteString.c_str(), NULL, 16);
 
     // Copy the rearranged bytes into calc_value_float
-    // Serial.print("\n" + name + ": ");
+    Serial.print("\n" + name + ": ");
     if(data_type == INT16){
     memcpy(&calc_value_int, &hexValue, sizeof(int32_t));
-    // Serial.print(String(calc_value_int) + " "); 
-    // Serial.println(unit);
+    Serial.print(String(calc_value_int) + " "); 
+    Serial.println(unit);
     return float(calc_value_int);
     }
 
     else if(data_type == INT32){
     memcpy(&calc_value_int, &hexValue, sizeof(int32_t));
-    // Serial.print(String(calc_value_int) + " "); 
-    // Serial.println(unit);
+    Serial.print(String(calc_value_int) + " "); 
+    Serial.println(unit);
     return float(calc_value_int);
     }
 
     else if(data_type == FLOAT){
     memcpy(&calc_value_float, &hexValue, sizeof(float));
-    // Serial.print(String(calc_value_float) + " "); 
-    // Serial.println(unit);
+    Serial.print(String(calc_value_float) + " "); 
+    Serial.println(unit);
     return calc_value_float;
     }
+    return 0;
 }
-String handle_modbus(const uint8_t modbusCommand[8]){ 
+String handle_modbus(const uint8_t modbus_Command[8]){ 
   
   String received_array;
   unsigned long listen_startTime;        // Start this timer, once the hex command is sent through Modbus
@@ -384,10 +385,13 @@ String handle_modbus(const uint8_t modbusCommand[8]){
 
    for(int i = 0; i<8; i++)
   {
-    modbus.write(modbusCommand[i]);
+    modbus.write(modbus_Command[i]);
+    // Serial.print("0x");
+    // Serial.print(modbus_Command[i], HEX);
+    // Serial.print(" ");
   }
-
-   Serial.println("\n[Info] Hex Sending Successful");
+  // Serial.println();
+  // Serial.println("\n[Info] Hex Sending Successful");
   listen_startTime = millis();
 
     // wait untill data is received or timeout period
@@ -401,12 +405,11 @@ String handle_modbus(const uint8_t modbusCommand[8]){
     if (!modbus.available())  //If no data received, exit function
     {
       Serial.println("\n[Info] Timeout Waiting for data...\n");
-      received_array = "";
-      return received_array;
+      return "";
     }
 
       while (modbus.available()) {
-      char receivedChar = modbus.read();
+      uint8_t receivedChar = modbus.read();
           Serial.print("0x");
       if (receivedChar < 0x10) {
           Serial.print("0");  // Print leading zero for single-digit hexadecimal values
@@ -416,12 +419,15 @@ String handle_modbus(const uint8_t modbusCommand[8]){
       Serial.print(receivedChar, HEX);
       received_array = received_array + String(receivedChar,HEX);
       Serial.print(" ");
+      // char buffer[3]; // for HEX conversion
+      // sprintf(buffer, "%02X", receivedChar);
+      // received_array += buffer;
     }
  //----------------------------------------- Modbus Data validation -------------------------------------//
     int reply_len = received_array.substring(4,6).toInt();
     Serial.println("\n\tReply len: " + String((reply_len*2)+10) );
     if(received_array.length() != (reply_len*2)+10) {
-      Serial.print("\nInvalid Data received!...");
+      Serial.println("\nInvalid Data received!...");
       return "";
     }  
     Serial.print("\nModbus Receiving Success!, Data: " + received_array);
